@@ -50,4 +50,10 @@ public class ClientController {
     public Mono<ClientSummaryDto> generateSummary(@PathVariable String id) {
         return clientService.generateSummary(id);
     }
+
+    @GetMapping(value = "/checkMainAccountBalance/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public Mono<Client> checkMainAccountBalance(@PathVariable String id) {
+        return clientService.getClientById(id);
+    }
 }

@@ -22,4 +22,6 @@ public interface ProductService {
     Mono<Product> chargeconsumptions(String id, Product product);
 
     Flux<Product> availablebalances(String idClient);
+    Mono<Product> transferBetweenAccounts(String id, Product product);
+
 }

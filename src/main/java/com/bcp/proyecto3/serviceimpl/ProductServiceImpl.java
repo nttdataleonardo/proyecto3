@@ -39,14 +39,21 @@ public class ProductServiceImpl implements ProductService {
     public Mono<Product> validateClientAndProduct(Client client, Product product) {
         ProductType[] typesToPersonal = {ProductType.AHORRO, ProductType.CUENTA_CORRIENTE, ProductType.PLAZO_FIJO};
         ProductType[] typesToBusiness = {ProductType.AHORRO, ProductType.PLAZO_FIJO};
+        ProductType[] typesAhorro = {ProductType.AHORRO};
+        ProductType[] typesCorriente = {ProductType.CUENTA_CORRIENTE};
         if (ClientType.PERSONAL.equals(client.getType())) {
             return existsProductByTypes(product, typesToPersonal,"Un cliente personal solo puede tener un máximo de una cuenta de ahorro, una cuenta corriente o cuentas a plazo fijo");
-        } else if (ClientType.BUSINESS.equals(client.getType())){
+        } else if (ClientType.BUSINESS.equals(client.getType())) {
             return existsProductByTypes(product, typesToBusiness,"Un cliente empresarial no puede tener una cuenta de ahorro o de plazo fijo, pero sí múltiples cuentas corrientes");
-        }  else if (ClientType.PERSONAL_VIP.equals(client.getType())){
-            return Mono.empty();
-        }  else if (ClientType.BUSINESS_PYME.equals(client.getType())){
-            return Mono.empty();
+        }  else if (ClientType.PERSONAL_VIP.equals(client.getType())) {
+            if (product.compareMinBalanceWidthValue(new BigDecimal(500))) {
+                return Mono.error(new ConflictException("El monto minimo mensual debe ser de 500"));
+            } else {
+                return existsProductByTypes(product, typesToBusiness,"Un cliente empresarial no puede tener una cuenta de ahorro o de plazo fijo, pero sí múltiples cuentas corrientes");
+            }
+        }  else if (ClientType.BUSINESS_PYME.equals(client.getType())) {
+            return existsProductByTypes(product, typesAhorro,"Debe tener una cuenta corriente")
+                    .then(existsProductByTypes(product, typesCorriente,"Debe tener una cuenta corriente"));
         }  else {
             return Mono.empty();
         }
@@ -100,6 +107,7 @@ public class ProductServiceImpl implements ProductService {
         return productRepository.findById(id)
                 .switchIfEmpty(Mono.error(new NotFoundException("Non existent Product: " + id)))
                 .flatMap(productEntity -> {
+                    productEntity.compareMaxTransactions();
                     productEntity.setBalance(productEntity.getBalance().add(updatedProduct.getBalance()));
                     return productRepository.save(productEntity)
                             .thenReturn(productEntity.toProduct());
@@ -111,6 +119,7 @@ public class ProductServiceImpl implements ProductService {
         return productRepository.findById(id)
                 .switchIfEmpty(Mono.error(new NotFoundException("Non existent Product: " + id)))
                 .flatMap(productEntity -> {
+                    productEntity.compareMaxTransactions();
                     productEntity.setBalance(productEntity.getBalance().subtract(updatedProduct.getBalance()));
                     return productRepository.save(productEntity)
                             .thenReturn(productEntity.toProduct());
@@ -163,4 +172,25 @@ public class ProductServiceImpl implements ProductService {
                 ProductType.TARJETA_CREDITO_PERSONAL, ProductType.TARJETA_CREDITO_EMPRESARIAL};
         return this.productRepository.existsByClientIdAndTypeContainsAll(id,typesCreditsAndAccountBank).map(Product::toProduct);
     }
+    @Override
+    public Mono<Product> transferBetweenAccounts(String id, Product product) {
+      return  productRepository.findById(id)
+              .switchIfEmpty(Mono.error(new NotFoundException("Non existent Product: " + id)))
+              .flatMap(productEntity -> {
+                BigDecimal resultBalanceSecond = productEntity.getTransSecondBank();
+                productEntity.setBalance(productEntity.getBalance().subtract(resultBalanceSecond));
+
+
+                return productRepository.save(productEntity).flatMap(prod ->{
+                  return productRepository.findById(product.getIdAnotherAccount())
+                          .switchIfEmpty(Mono.error(new NotFoundException("Non existent Product: " + id)))
+                          .flatMap(secondProduct -> {
+                            secondProduct.setBalance(secondProduct.getBalance().add(resultBalanceSecond));
+                            return productRepository.save(secondProduct);
+                          });
+                        })
+                        .thenReturn(productEntity.toProduct());
+              });
+    }
+
 }

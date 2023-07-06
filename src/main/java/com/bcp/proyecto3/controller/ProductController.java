@@ -74,4 +74,9 @@ public class ProductController {
         return productService.availablebalances(idClient);
     }
 
+    @PutMapping(value = "/transferBetweenAccounts/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public Mono<Product> transferBetweenAccounts(@PathVariable String id, @RequestBody Product updatedProduct) {
+        return productService.transferBetweenAccounts(id, updatedProduct);
+    }
 }

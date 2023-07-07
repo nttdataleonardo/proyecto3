@@ -3,10 +3,12 @@ package com.bcp.proyecto3.service;
 
 import com.bcp.proyecto3.model.Client;
 import com.bcp.proyecto3.model.Product;
+import org.springframework.cache.annotation.Cacheable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface ProductService {
+
     Flux<Product> getAllProducts();
     Mono<Product> createProduct(Product product);
     Mono<Product> validateClientAndProduct(Client client, Product product);

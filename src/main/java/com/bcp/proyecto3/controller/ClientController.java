@@ -4,6 +4,7 @@ import com.bcp.proyecto3.dto.ClientSummaryDto;
 import com.bcp.proyecto3.model.Client;
 import com.bcp.proyecto3.service.ClientService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
